@@ -26,11 +26,11 @@ type Handler struct {
 	hub     *Hub
 }
 
-func NewHandler(service Service, hub *Hub) *Handler {
-	if svc, ok := service.(*service); ok {
-		svc.hub = hub
+func NewHandler(svc Service, hub *Hub) *Handler {
+	if s, ok := svc.(*service); ok {
+		s.hub = hub
 	}
-	return &Handler{service: service, hub: hub}
+	return &Handler{service: svc, hub: hub}
 }
 
 func RegisterRoutes(router *mux.Router, handler *Handler, authMiddleware func(http.Handler) http.Handler) {
