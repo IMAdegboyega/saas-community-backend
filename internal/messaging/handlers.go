@@ -27,8 +27,9 @@ type Handler struct {
 }
 
 func NewHandler(svc Service, hub *Hub) *Handler {
-	if s, ok := svc.(*service); ok {
-		s.hub = hub
+	// Set hub on service if it has the SetHub method
+	if setter, ok := svc.(interface{ SetHub(*Hub) }); ok {
+		setter.SetHub(hub)
 	}
 	return &Handler{service: svc, hub: hub}
 }
