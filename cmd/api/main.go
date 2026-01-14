@@ -12,6 +12,7 @@ import (
 
 	"github.com/gorilla/mux"
 	"github.com/joho/godotenv"
+	"github.com/rs/cors"
 
 	"github.com/tommygebru/kiekky-backend/internal/auth"
 	"github.com/tommygebru/kiekky-backend/internal/config"
@@ -129,13 +130,21 @@ func main() {
 
 	log.Println("✅ Routes registered")
 
-	// Wrap router with CORS handler
-	corsHandler := corsWrapper(router)
+	// Setup CORS using rs/cors package (proven to work)
+	c := cors.New(cors.Options{
+		AllowedOrigins:   []string{"*"},
+		AllowedMethods:   []string{"GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"},
+		AllowedHeaders:   []string{"Accept", "Authorization", "Content-Type", "X-Requested-With"},
+		AllowCredentials: true,
+		MaxAge:           86400,
+		Debug:            cfg.Environment != "production",
+	})
+	handler := c.Handler(router)
 
 	// 8. Start server
 	srv := &http.Server{
 		Addr:         fmt.Sprintf(":%s", cfg.Port),
-		Handler:      corsHandler,
+		Handler:      handler,
 		ReadTimeout:  15 * time.Second,
 		WriteTimeout: 15 * time.Second,
 		IdleTimeout:  60 * time.Second,
@@ -196,23 +205,3 @@ func loggingMiddleware(next http.Handler) http.Handler {
 	})
 }
 
-// corsWrapper wraps the entire handler with CORS support
-func corsWrapper(handler http.Handler) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		// Set CORS headers for ALL responses
-		w.Header().Set("Access-Control-Allow-Origin", "*")
-		w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, PATCH, OPTIONS")
-		w.Header().Set("Access-Control-Allow-Headers", "Accept, Content-Type, Content-Length, Accept-Encoding, Authorization, X-Requested-With")
-		w.Header().Set("Access-Control-Allow-Credentials", "true")
-		w.Header().Set("Access-Control-Max-Age", "86400")
-
-		// Handle preflight OPTIONS request immediately
-		if r.Method == "OPTIONS" {
-			w.WriteHeader(http.StatusOK)
-			return
-		}
-
-		// Pass to the actual handler
-		handler.ServeHTTP(w, r)
-	})
-}
