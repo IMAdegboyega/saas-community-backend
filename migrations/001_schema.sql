@@ -464,7 +464,7 @@ CREATE INDEX IF NOT EXISTS idx_comments_parent ON comments(parent_id);
 -- Stories indexes
 CREATE INDEX IF NOT EXISTS idx_stories_user ON stories(user_id);
 CREATE INDEX IF NOT EXISTS idx_stories_expires ON stories(expires_at);
-CREATE INDEX IF NOT EXISTS idx_stories_active ON stories(user_id, expires_at) WHERE expires_at > CURRENT_TIMESTAMP;
+CREATE INDEX IF NOT EXISTS idx_stories_user_expires ON stories(user_id, expires_at);
 
 -- Story views indexes
 CREATE INDEX IF NOT EXISTS idx_story_views_story ON story_views(story_id);
