@@ -124,25 +124,18 @@ func main() {
 			http.StripPrefix("/uploads/", http.FileServer(http.Dir(cfg.LocalUploadDir))))
 	}
 
-	// Global middleware - CORS must be first!
-	router.Use(corsMiddleware)
+	// Global middleware
 	router.Use(loggingMiddleware)
 
-	// Handle OPTIONS preflight for all routes
-	router.Methods("OPTIONS").HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Access-Control-Allow-Origin", "*")
-		w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, PATCH, OPTIONS")
-		w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization, X-Requested-With")
-		w.Header().Set("Access-Control-Max-Age", "86400")
-		w.WriteHeader(http.StatusOK)
-	})
-
 	log.Println("✅ Routes registered")
+
+	// Wrap router with CORS handler
+	corsHandler := corsWrapper(router)
 
 	// 8. Start server
 	srv := &http.Server{
 		Addr:         fmt.Sprintf(":%s", cfg.Port),
-		Handler:      router,
+		Handler:      corsHandler,
 		ReadTimeout:  15 * time.Second,
 		WriteTimeout: 15 * time.Second,
 		IdleTimeout:  60 * time.Second,
@@ -203,21 +196,23 @@ func loggingMiddleware(next http.Handler) http.Handler {
 	})
 }
 
-func corsMiddleware(next http.Handler) http.Handler {
+// corsWrapper wraps the entire handler with CORS support
+func corsWrapper(handler http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		// Set CORS headers for all requests
+		// Set CORS headers for ALL responses
 		w.Header().Set("Access-Control-Allow-Origin", "*")
 		w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, PATCH, OPTIONS")
-		w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization, X-Requested-With")
+		w.Header().Set("Access-Control-Allow-Headers", "Accept, Content-Type, Content-Length, Accept-Encoding, Authorization, X-Requested-With")
 		w.Header().Set("Access-Control-Allow-Credentials", "true")
 		w.Header().Set("Access-Control-Max-Age", "86400")
 
-		// Handle preflight OPTIONS request
+		// Handle preflight OPTIONS request immediately
 		if r.Method == "OPTIONS" {
 			w.WriteHeader(http.StatusOK)
 			return
 		}
 
-		next.ServeHTTP(w, r)
+		// Pass to the actual handler
+		handler.ServeHTTP(w, r)
 	})
 }
