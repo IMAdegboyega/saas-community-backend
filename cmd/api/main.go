@@ -131,10 +131,32 @@ func main() {
 	log.Println("✅ Routes registered")
 
 	// Setup CORS using rs/cors package (proven to work)
+	// Note: AllowCredentials with AllowedOrigins: "*" is not allowed per CORS spec
+	// In production, specify exact origins. In development, we use AllowOriginFunc
 	c := cors.New(cors.Options{
-		AllowedOrigins:   []string{"*"},
+		AllowOriginFunc: func(origin string) bool {
+			// In development, allow all origins
+			if cfg.Environment != "production" {
+				return true
+			}
+			// In production, add your allowed origins here
+			allowedOrigins := []string{
+				"https://kiekky.com",
+				"https://www.kiekky.com",
+				"https://app.kiekky.com",
+				"https://kiekky.vercel.app",
+				"https://kiekkyfront.vercel.app",
+			}
+			for _, allowed := range allowedOrigins {
+				if origin == allowed {
+					return true
+				}
+			}
+			return false
+		},
 		AllowedMethods:   []string{"GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"},
-		AllowedHeaders:   []string{"Accept", "Authorization", "Content-Type", "X-Requested-With"},
+		AllowedHeaders:   []string{"Accept", "Authorization", "Content-Type", "X-Requested-With", "Origin"},
+		ExposedHeaders:   []string{"Content-Length", "Content-Type"},
 		AllowCredentials: true,
 		MaxAge:           86400,
 		Debug:            cfg.Environment != "production",
