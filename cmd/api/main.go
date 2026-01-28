@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"strings"
 	"syscall"
 	"time"
 
@@ -133,6 +134,7 @@ func main() {
 	// Setup CORS using rs/cors package (proven to work)
 	// Note: AllowCredentials with AllowedOrigins: "*" is not allowed per CORS spec
 	// In production, specify exact origins. In development, we use AllowOriginFunc
+	// You can also set ALLOWED_ORIGINS env var (comma-separated) to add more origins
 	c := cors.New(cors.Options{
 		AllowOriginFunc: func(origin string) bool {
 			// In development, allow all origins
@@ -146,7 +148,16 @@ func main() {
 				"https://app.kiekky.com",
 				"https://kiekky.vercel.app",
 				"https://kiekkyfront.vercel.app",
+				"https://community-platform-core.vercel.app",
 			}
+			
+			// Also check ALLOWED_ORIGINS environment variable
+			if envOrigins := os.Getenv("ALLOWED_ORIGINS"); envOrigins != "" {
+				for _, o := range strings.Split(envOrigins, ",") {
+					allowedOrigins = append(allowedOrigins, strings.TrimSpace(o))
+				}
+			}
+			
 			for _, allowed := range allowedOrigins {
 				if origin == allowed {
 					return true

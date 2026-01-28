@@ -21,22 +21,26 @@ func RegisterRoutes(router *mux.Router, handler *Handler, authMiddleware func(ht
 	api := router.PathPrefix("/api/v1").Subrouter()
 	api.Use(authMiddleware)
 
-	// Post CRUD
+	// IMPORTANT: Specific routes must be registered BEFORE wildcard {id} routes
+	
+	// Feed routes (no post {id})
+	api.HandleFunc("/feed", handler.GetFeed).Methods("GET")
 	api.HandleFunc("/posts", handler.CreatePost).Methods("POST")
+	api.HandleFunc("/posts/saved", handler.GetSavedPosts).Methods("GET")
+
+	// User posts
+	api.HandleFunc("/users/{id}/posts", handler.GetUserPosts).Methods("GET")
+
+	// Post CRUD with {id} - MUST come after /posts/saved
 	api.HandleFunc("/posts/{id}", handler.GetPost).Methods("GET")
 	api.HandleFunc("/posts/{id}", handler.UpdatePost).Methods("PUT")
 	api.HandleFunc("/posts/{id}", handler.DeletePost).Methods("DELETE")
 
-	// Feed
-	api.HandleFunc("/feed", handler.GetFeed).Methods("GET")
-	api.HandleFunc("/users/{id}/posts", handler.GetUserPosts).Methods("GET")
-
-	// Interactions
+	// Post interactions
 	api.HandleFunc("/posts/{id}/like", handler.LikePost).Methods("POST")
 	api.HandleFunc("/posts/{id}/unlike", handler.UnlikePost).Methods("POST")
 	api.HandleFunc("/posts/{id}/save", handler.SavePost).Methods("POST")
 	api.HandleFunc("/posts/{id}/unsave", handler.UnsavePost).Methods("POST")
-	api.HandleFunc("/posts/saved", handler.GetSavedPosts).Methods("GET")
 
 	// Comments
 	api.HandleFunc("/posts/{id}/comments", handler.CreateComment).Methods("POST")

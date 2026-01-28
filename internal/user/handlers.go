@@ -26,11 +26,17 @@ func RegisterRoutes(router *mux.Router, handler *Handler, authMiddleware func(ht
 	api := router.PathPrefix("/api/v1").Subrouter()
 	api.Use(authMiddleware)
 
-	// User profile routes
-	api.HandleFunc("/users/{id}", handler.GetUser).Methods("GET")
-	api.HandleFunc("/users/username/{username}", handler.GetUserByUsername).Methods("GET")
+	// IMPORTANT: Specific routes must be registered BEFORE wildcard {id} routes
+	// Otherwise /users/suggestions matches /users/{id} with id="suggestions"
+	
+	// Specific user routes (no {id} wildcard)
 	api.HandleFunc("/users/search", handler.SearchUsers).Methods("GET")
 	api.HandleFunc("/users/suggestions", handler.GetSuggestedUsers).Methods("GET")
+	api.HandleFunc("/users/blocked", handler.GetBlockedUsers).Methods("GET")
+	api.HandleFunc("/users/username/{username}", handler.GetUserByUsername).Methods("GET")
+
+	// User profile routes with {id} wildcard - MUST come after specific routes
+	api.HandleFunc("/users/{id}", handler.GetUser).Methods("GET")
 
 	// Follow routes
 	api.HandleFunc("/users/{id}/follow", handler.Follow).Methods("POST")
@@ -42,7 +48,6 @@ func RegisterRoutes(router *mux.Router, handler *Handler, authMiddleware func(ht
 	// Block routes
 	api.HandleFunc("/users/{id}/block", handler.Block).Methods("POST")
 	api.HandleFunc("/users/{id}/unblock", handler.Unblock).Methods("POST")
-	api.HandleFunc("/users/blocked", handler.GetBlockedUsers).Methods("GET")
 }
 
 // GetUser returns a user's profile
