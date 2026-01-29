@@ -150,14 +150,14 @@ func main() {
 				"https://kiekkyfront.vercel.app",
 				"https://community-platform-core.vercel.app",
 			}
-
+			
 			// Also check ALLOWED_ORIGINS environment variable
 			if envOrigins := os.Getenv("ALLOWED_ORIGINS"); envOrigins != "" {
 				for _, o := range strings.Split(envOrigins, ",") {
 					allowedOrigins = append(allowedOrigins, strings.TrimSpace(o))
 				}
 			}
-
+			
 			for _, allowed := range allowedOrigins {
 				if origin == allowed {
 					return true
@@ -238,4 +238,3 @@ func loggingMiddleware(next http.Handler) http.Handler {
 	})
 }
 
-//trigger a new deployment test

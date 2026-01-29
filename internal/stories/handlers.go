@@ -145,6 +145,8 @@ func (h *Handler) GetFeedStories(w http.ResponseWriter, r *http.Request) {
 
 	stories, err := h.service.GetFeedStories(r.Context(), userID)
 	if err != nil {
+		// Log the actual error for debugging
+		println("GetFeedStories error:", err.Error())
 		common.InternalError(w, "Failed to get stories feed")
 		return
 	}

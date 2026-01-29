@@ -174,6 +174,8 @@ func (h *Handler) GetFeed(w http.ResponseWriter, r *http.Request) {
 
 	posts, err := h.service.GetFeed(r.Context(), userID, feedType, limit, offset)
 	if err != nil {
+		// Log the actual error for debugging
+		println("GetFeed error:", err.Error())
 		common.InternalError(w, "Failed to get feed")
 		return
 	}

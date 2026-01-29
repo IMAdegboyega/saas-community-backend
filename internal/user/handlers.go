@@ -146,6 +146,8 @@ func (h *Handler) GetSuggestedUsers(w http.ResponseWriter, r *http.Request) {
 
 	users, err := h.service.GetSuggestedUsers(r.Context(), currentUserID, limit)
 	if err != nil {
+		// Log the actual error for debugging
+		println("GetSuggestedUsers error:", err.Error())
 		common.InternalError(w, "Failed to get suggestions")
 		return
 	}
