@@ -40,7 +40,8 @@ type FollowUser struct {
 	DisplayName    *string   `json:"display_name,omitempty" db:"display_name"`
 	ProfilePicture *string   `json:"profile_picture,omitempty" db:"profile_picture"`
 	IsVerified     bool      `json:"is_verified" db:"is_verified"`
-	IsFollowing    bool      `json:"is_following"` // Whether current user follows this user
+	IsFollowing    bool      `json:"is_following" db:"is_following"` // Whether current user follows this user
+	IsFollowingYou bool      `json:"is_following_you" db:"is_following_you"` // Whether this user follows current user (for "Follow Back")
 	FollowedAt     time.Time `json:"followed_at" db:"followed_at"`
 }
 

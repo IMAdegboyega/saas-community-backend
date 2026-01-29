@@ -394,6 +394,8 @@ func (r *PostgresRepository) GetBlockedUsers(ctx context.Context, userID int64, 
 }
 
 // GetSuggestedUsers gets suggested users to follow
+// Returns ALL users except current user (for small platforms)
+// Includes whether they follow you (for "Follow Back" button)
 func (r *PostgresRepository) GetSuggestedUsers(ctx context.Context, userID int64, limit int) ([]*FollowUser, error) {
 	if limit <= 0 {
 		limit = 10
@@ -403,15 +405,16 @@ func (r *PostgresRepository) GetSuggestedUsers(ctx context.Context, userID int64
 	query := `
 		SELECT DISTINCT
 			u.id, u.username, u.display_name, u.profile_picture, u.is_verified,
-			FALSE as is_following,
+			EXISTS(SELECT 1 FROM follows WHERE follower_id = $1 AND following_id = u.id) as is_following,
+			EXISTS(SELECT 1 FROM follows WHERE follower_id = u.id AND following_id = $1) as is_following_you,
 			u.created_at as followed_at
 		FROM users u
 		WHERE u.id != $1
 			AND u.account_status = 'active'
-			AND NOT EXISTS(SELECT 1 FROM follows WHERE follower_id = $1 AND following_id = u.id)
 			AND NOT EXISTS(SELECT 1 FROM blocks WHERE blocker_id = $1 AND blocked_id = u.id)
 			AND NOT EXISTS(SELECT 1 FROM blocks WHERE blocker_id = u.id AND blocked_id = $1)
 		ORDER BY 
+			EXISTS(SELECT 1 FROM follows WHERE follower_id = u.id AND following_id = $1) DESC,
 			u.is_verified DESC,
 			(SELECT COUNT(*) FROM follows WHERE following_id = u.id) DESC
 		LIMIT $2`
