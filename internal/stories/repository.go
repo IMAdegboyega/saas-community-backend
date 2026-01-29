@@ -142,24 +142,27 @@ func (r *PostgresRepository) GetUserStories(ctx context.Context, userID, current
 
 func (r *PostgresRepository) GetFeedStories(ctx context.Context, userID int64) ([]*UserStories, error) {
 	// Get users with active stories that the current user follows
+	// Simplified query to avoid prepared statement parameter issues
 	query := `
-		SELECT DISTINCT ON (u.id)
+		SELECT 
 			u.id, u.username, u.display_name, u.profile_picture, u.is_verified,
 			MAX(s.created_at) as last_story_at,
-			NOT EXISTS(
-				SELECT 1 FROM stories s2 
-				WHERE s2.user_id = u.id AND s2.expires_at > CURRENT_TIMESTAMP
-				AND NOT EXISTS(SELECT 1 FROM story_views WHERE story_id = s2.id AND viewer_id = $1)
+			COALESCE(
+				(SELECT COUNT(*) = 0 FROM stories s2 
+				 WHERE s2.user_id = u.id 
+				 AND s2.expires_at > CURRENT_TIMESTAMP
+				 AND NOT EXISTS(SELECT 1 FROM story_views sv WHERE sv.story_id = s2.id AND sv.viewer_id = $1)),
+				true
 			) as all_viewed
 		FROM users u
 		JOIN stories s ON u.id = s.user_id
-		JOIN follows f ON u.id = f.following_id
-		WHERE f.follower_id = $1 
-			AND s.expires_at > CURRENT_TIMESTAMP
-			AND NOT EXISTS(SELECT 1 FROM blocks WHERE blocker_id = u.id AND blocked_id = $1)
-			AND NOT EXISTS(SELECT 1 FROM blocks WHERE blocker_id = $1 AND blocked_id = u.id)
-		GROUP BY u.id
-		ORDER BY u.id, all_viewed ASC, last_story_at DESC`
+		LEFT JOIN follows f ON u.id = f.following_id AND f.follower_id = $1
+		WHERE s.expires_at > CURRENT_TIMESTAMP
+			AND (f.follower_id = $1 OR u.id = $1)
+			AND NOT EXISTS(SELECT 1 FROM blocks b1 WHERE b1.blocker_id = u.id AND b1.blocked_id = $1)
+			AND NOT EXISTS(SELECT 1 FROM blocks b2 WHERE b2.blocker_id = $1 AND b2.blocked_id = u.id)
+		GROUP BY u.id, u.username, u.display_name, u.profile_picture, u.is_verified
+		ORDER BY all_viewed ASC, last_story_at DESC`
 
 	rows, err := r.db.QueryxContext(ctx, query, userID)
 	if err != nil {

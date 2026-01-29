@@ -403,7 +403,7 @@ func (r *PostgresRepository) GetSuggestedUsers(ctx context.Context, userID int64
 
 	suggestions := []*FollowUser{}
 	query := `
-		SELECT DISTINCT
+		SELECT 
 			u.id, u.username, u.display_name, u.profile_picture, u.is_verified,
 			EXISTS(SELECT 1 FROM follows WHERE follower_id = $1 AND following_id = u.id) as is_following,
 			EXISTS(SELECT 1 FROM follows WHERE follower_id = u.id AND following_id = $1) as is_following_you,
@@ -414,7 +414,7 @@ func (r *PostgresRepository) GetSuggestedUsers(ctx context.Context, userID int64
 			AND NOT EXISTS(SELECT 1 FROM blocks WHERE blocker_id = $1 AND blocked_id = u.id)
 			AND NOT EXISTS(SELECT 1 FROM blocks WHERE blocker_id = u.id AND blocked_id = $1)
 		ORDER BY 
-			EXISTS(SELECT 1 FROM follows WHERE follower_id = u.id AND following_id = $1) DESC,
+			is_following_you DESC,
 			u.is_verified DESC,
 			(SELECT COUNT(*) FROM follows WHERE following_id = u.id) DESC
 		LIMIT $2`
