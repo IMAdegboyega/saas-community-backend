@@ -95,12 +95,16 @@ func (h *Handler) GetUserByUsername(w http.ResponseWriter, r *http.Request) {
 			common.NotFound(w, "User not found")
 			return
 		}
+		// Log the actual error
+		println("GetUserByUsername error (lookup):", err.Error())
 		common.InternalError(w, "Failed to get user")
 		return
 	}
 
 	profile, err := h.service.GetUserProfile(r.Context(), user.ID, currentUserID)
 	if err != nil {
+		// Log the actual error
+		println("GetUserByUsername error (profile):", err.Error())
 		common.InternalError(w, "Failed to get user profile")
 		return
 	}

@@ -21,8 +21,8 @@ type UserWithStats struct {
 	FollowersCount int64 `json:"followers_count" db:"followers_count"`
 	FollowingCount int64 `json:"following_count" db:"following_count"`
 	PostsCount     int64 `json:"posts_count" db:"posts_count"`
-	IsFollowing    bool  `json:"is_following,omitempty"` // Whether current user follows this user
-	IsFollowedBy   bool  `json:"is_followed_by,omitempty"` // Whether this user follows current user
+	IsFollowing    bool  `json:"is_following,omitempty" db:"is_following"` // Whether current user follows this user
+	IsFollowedBy   bool  `json:"is_followed_by,omitempty" db:"is_followed_by"` // Whether this user follows current user
 }
 
 // Follow represents a follow relationship
