@@ -88,3 +88,12 @@ type FollowStats struct {
 	FollowersCount int64 `json:"followers_count"`
 	FollowingCount int64 `json:"following_count"`
 }
+
+// UpdateProfileRequest represents profile update request
+type UpdateProfileRequest struct {
+	DisplayName    *string `json:"display_name,omitempty"`
+	Bio            *string `json:"bio,omitempty"`
+	ProfilePicture *string `json:"profile_picture,omitempty"`
+	Location       *string `json:"location,omitempty"`
+	Website        *string `json:"website,omitempty"`
+}

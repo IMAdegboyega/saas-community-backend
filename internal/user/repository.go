@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"fmt"
 
 	"github.com/jmoiron/sqlx"
 )
@@ -26,6 +27,7 @@ type Repository interface {
 	GetUserByUsername(ctx context.Context, username string) (*User, error)
 	GetUserWithStats(ctx context.Context, id int64, currentUserID int64) (*UserWithStats, error)
 	SearchUsers(ctx context.Context, query string, currentUserID int64, limit, offset int) ([]*FollowUser, error)
+	UpdateProfile(ctx context.Context, userID int64, req *UpdateProfileRequest) (*User, error)
 	
 	// Follow operations
 	Follow(ctx context.Context, followerID, followingID int64) error
@@ -421,4 +423,52 @@ func (r *PostgresRepository) GetSuggestedUsers(ctx context.Context, userID int64
 
 	err := r.db.SelectContext(ctx, &suggestions, query, userID, limit)
 	return suggestions, err
+}
+
+// UpdateProfile updates a user's profile
+func (r *PostgresRepository) UpdateProfile(ctx context.Context, userID int64, req *UpdateProfileRequest) (*User, error) {
+	// Build dynamic UPDATE query
+	query := `UPDATE users SET updated_at = NOW()`
+	args := []interface{}{}
+	argNum := 1
+
+	if req.DisplayName != nil {
+		query += fmt.Sprintf(", display_name = $%d", argNum)
+		args = append(args, *req.DisplayName)
+		argNum++
+	}
+	if req.Bio != nil {
+		query += fmt.Sprintf(", bio = $%d", argNum)
+		args = append(args, *req.Bio)
+		argNum++
+	}
+	if req.ProfilePicture != nil {
+		query += fmt.Sprintf(", profile_picture = $%d", argNum)
+		args = append(args, *req.ProfilePicture)
+		argNum++
+	}
+	if req.Location != nil {
+		query += fmt.Sprintf(", location = $%d", argNum)
+		args = append(args, *req.Location)
+		argNum++
+	}
+	if req.Website != nil {
+		query += fmt.Sprintf(", website = $%d", argNum)
+		args = append(args, *req.Website)
+		argNum++
+	}
+
+	query += fmt.Sprintf(" WHERE id = $%d RETURNING id, username, display_name, profile_picture, bio, is_verified, is_online", argNum)
+	args = append(args, userID)
+
+	user := &User{}
+	err := r.db.QueryRowxContext(ctx, query, args...).Scan(
+		&user.ID, &user.Username, &user.DisplayName, &user.ProfilePicture,
+		&user.Bio, &user.IsVerified, &user.IsOnline,
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	return user, nil
 }

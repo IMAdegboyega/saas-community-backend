@@ -89,22 +89,52 @@ func (r *PostgresRepository) GetUserByID(ctx context.Context, id int64) (*User, 
 // GetUserWithStats retrieves a user by ID with their profile stats
 func (r *PostgresRepository) GetUserWithStats(ctx context.Context, id int64) (*UserWithStats, error) {
 	user := &UserWithStats{}
-	query := `
-		SELECT 
-			u.id, u.email, u.username, u.password_hash, u.phone, u.is_verified, 
-			u.email_verified, u.phone_verified, u.display_name, u.profile_picture, 
-			u.bio, u.account_status, u.is_online, u.last_seen, u.created_at, u.updated_at,
-			(SELECT COUNT(*) FROM posts WHERE user_id = u.id AND deleted_at IS NULL) as posts_count,
-			(SELECT COUNT(*) FROM follows WHERE following_id = u.id) as followers_count,
-			(SELECT COUNT(*) FROM follows WHERE follower_id = u.id) as following_count
-		FROM users u
-		WHERE u.id = $1`
-
-	err := r.db.GetContext(ctx, user, query, id)
+	
+	// First get user data
+	userQuery := `
+		SELECT id, email, username, password_hash, phone, is_verified, 
+			   email_verified, phone_verified, display_name, profile_picture, 
+			   bio, account_status, is_online, last_seen, created_at, updated_at
+		FROM users WHERE id = $1`
+	
+	err := r.db.QueryRowxContext(ctx, userQuery, id).Scan(
+		&user.ID, &user.Email, &user.Username, &user.PasswordHash, &user.Phone,
+		&user.IsVerified, &user.EmailVerified, &user.PhoneVerified,
+		&user.DisplayName, &user.ProfilePicture, &user.Bio, &user.AccountStatus,
+		&user.IsOnline, &user.LastSeen, &user.CreatedAt, &user.UpdatedAt,
+	)
 	if err == sql.ErrNoRows {
 		return nil, ErrUserNotFound
 	}
-	return user, err
+	if err != nil {
+		return nil, err
+	}
+	
+	// Get posts count
+	var postsCount int64
+	err = r.db.GetContext(ctx, &postsCount, `SELECT COUNT(*) FROM posts WHERE user_id = $1 AND deleted_at IS NULL`, id)
+	if err != nil {
+		postsCount = 0
+	}
+	user.PostsCount = postsCount
+	
+	// Get followers count
+	var followersCount int64
+	err = r.db.GetContext(ctx, &followersCount, `SELECT COUNT(*) FROM follows WHERE following_id = $1`, id)
+	if err != nil {
+		followersCount = 0
+	}
+	user.FollowersCount = followersCount
+	
+	// Get following count
+	var followingCount int64
+	err = r.db.GetContext(ctx, &followingCount, `SELECT COUNT(*) FROM follows WHERE follower_id = $1`, id)
+	if err != nil {
+		followingCount = 0
+	}
+	user.FollowingCount = followingCount
+	
+	return user, nil
 }
 
 // GetUserByEmail retrieves a user by email

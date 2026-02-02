@@ -13,6 +13,7 @@ type Service interface {
 	GetUserByUsername(ctx context.Context, username string) (*User, error)
 	GetUserProfile(ctx context.Context, userID, currentUserID int64) (*UserWithStats, error)
 	SearchUsers(ctx context.Context, query string, currentUserID int64, limit, offset int) ([]*FollowUser, error)
+	UpdateProfile(ctx context.Context, userID int64, req *UpdateProfileRequest) (*User, error)
 	
 	// Follow operations
 	Follow(ctx context.Context, followerID, followingID int64) error
@@ -175,4 +176,9 @@ func (s *service) GetSuggestedUsers(ctx context.Context, userID int64, limit int
 		limit = 10
 	}
 	return s.repo.GetSuggestedUsers(ctx, userID, limit)
+}
+
+// UpdateProfile updates a user's profile
+func (s *service) UpdateProfile(ctx context.Context, userID int64, req *UpdateProfileRequest) (*User, error) {
+	return s.repo.UpdateProfile(ctx, userID, req)
 }

@@ -34,6 +34,8 @@ func RegisterRoutes(router *mux.Router, handler *Handler, authMiddleware func(ht
 	api.HandleFunc("/users/suggestions", handler.GetSuggestedUsers).Methods("GET")
 	api.HandleFunc("/users/blocked", handler.GetBlockedUsers).Methods("GET")
 	api.HandleFunc("/users/username/{username}", handler.GetUserByUsername).Methods("GET")
+	api.HandleFunc("/users/profile", handler.UpdateProfile).Methods("PUT")
+	api.HandleFunc("/users/profile/picture", handler.UploadProfilePicture).Methods("POST")
 
 	// User profile routes with {id} wildcard - MUST come after specific routes
 	api.HandleFunc("/users/{id}", handler.GetUser).Methods("GET")
@@ -380,4 +382,60 @@ func (h *Handler) GetBlockedUsers(w http.ResponseWriter, r *http.Request) {
 	}
 
 	common.SuccessWithMeta(w, "", blocked, &common.Meta{Total: total})
+}
+
+// UpdateProfile updates the current user's profile
+func (h *Handler) UpdateProfile(w http.ResponseWriter, r *http.Request) {
+	currentUserID, err := common.GetUserID(r.Context())
+	if err != nil {
+		common.Unauthorized(w, "Unauthorized")
+		return
+	}
+
+	var req UpdateProfileRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		common.BadRequest(w, "Invalid request body")
+		return
+	}
+
+	user, err := h.service.UpdateProfile(r.Context(), currentUserID, &req)
+	if err != nil {
+		println("UpdateProfile error:", err.Error())
+		common.InternalError(w, "Failed to update profile")
+		return
+	}
+
+	common.Success(w, "Profile updated successfully", user)
+}
+
+// UploadProfilePicture uploads a new profile picture
+func (h *Handler) UploadProfilePicture(w http.ResponseWriter, r *http.Request) {
+	currentUserID, err := common.GetUserID(r.Context())
+	if err != nil {
+		common.Unauthorized(w, "Unauthorized")
+		return
+	}
+
+	// Parse multipart form (max 10MB)
+	if err := r.ParseMultipartForm(10 << 20); err != nil {
+		common.BadRequest(w, "Failed to parse form data")
+		return
+	}
+
+	file, _, err := r.FormFile("picture")
+	if err != nil {
+		common.BadRequest(w, "No picture file provided")
+		return
+	}
+	defer file.Close()
+
+	// TODO: Upload to Cloudinary and get URL
+	// For now, return a placeholder response
+	// In production, this would upload to Cloudinary and save the URL
+
+	_ = currentUserID // Will be used when saving URL to database
+
+	common.Success(w, "Profile picture upload endpoint - Cloudinary integration pending", map[string]string{
+		"message": "Profile picture upload will be available after Cloudinary integration",
+	})
 }
