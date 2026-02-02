@@ -16,11 +16,20 @@ type User struct {
 	PhoneVerified   bool      `json:"phone_verified" db:"phone_verified"`
 	DisplayName     *string   `json:"display_name,omitempty" db:"display_name"`
 	ProfilePicture  *string   `json:"profile_picture,omitempty" db:"profile_picture"`
+	Bio             *string   `json:"bio,omitempty" db:"bio"`
 	AccountStatus   string    `json:"account_status" db:"account_status"`
 	IsOnline        bool      `json:"is_online" db:"is_online"`
 	LastSeen        time.Time `json:"last_seen" db:"last_seen"`
 	CreatedAt       time.Time `json:"created_at" db:"created_at"`
 	UpdatedAt       time.Time `json:"updated_at" db:"updated_at"`
+}
+
+// UserWithStats represents a user with their profile stats
+type UserWithStats struct {
+	User
+	PostsCount     int64 `json:"posts_count" db:"posts_count"`
+	FollowersCount int64 `json:"followers_count" db:"followers_count"`
+	FollowingCount int64 `json:"following_count" db:"following_count"`
 }
 
 // Session represents a user session
@@ -73,6 +82,11 @@ type UserResponse struct {
 	DisplayName    *string `json:"display_name,omitempty"`
 	ProfilePicture *string `json:"profile_picture,omitempty"`
 	AccountStatus  string  `json:"account_status"`
+	Bio            *string `json:"bio,omitempty"`
+	// Profile stats
+	PostsCount     int64 `json:"posts_count"`
+	FollowersCount int64 `json:"followers_count"`
+	FollowingCount int64 `json:"following_count"`
 }
 
 // RefreshRequest represents token refresh request
@@ -132,5 +146,26 @@ func (u *User) ToResponse() *UserResponse {
 		DisplayName:    u.DisplayName,
 		ProfilePicture: u.ProfilePicture,
 		AccountStatus:  u.AccountStatus,
+		Bio:            u.Bio,
+	}
+}
+
+// ToResponse converts UserWithStats to UserResponse with stats
+func (u *UserWithStats) ToResponse() *UserResponse {
+	return &UserResponse{
+		ID:             u.ID,
+		Email:          u.Email,
+		Username:       u.Username,
+		Phone:          u.Phone,
+		IsVerified:     u.IsVerified,
+		EmailVerified:  u.EmailVerified,
+		PhoneVerified:  u.PhoneVerified,
+		DisplayName:    u.DisplayName,
+		ProfilePicture: u.ProfilePicture,
+		AccountStatus:  u.AccountStatus,
+		Bio:            u.Bio,
+		PostsCount:     u.PostsCount,
+		FollowersCount: u.FollowersCount,
+		FollowingCount: u.FollowingCount,
 	}
 }

@@ -25,6 +25,7 @@ type Repository interface {
 	GetUserByEmail(ctx context.Context, email string) (*User, error)
 	GetUserByUsername(ctx context.Context, username string) (*User, error)
 	GetUserByIdentifier(ctx context.Context, identifier string) (*User, error)
+	GetUserWithStats(ctx context.Context, id int64) (*UserWithStats, error)
 	UpdateUser(ctx context.Context, user *User) error
 	UpdatePassword(ctx context.Context, userID int64, passwordHash string) error
 	UpdateVerificationStatus(ctx context.Context, userID int64, field string, status bool) error
@@ -75,8 +76,29 @@ func (r *PostgresRepository) GetUserByID(ctx context.Context, id int64) (*User, 
 	user := &User{}
 	query := `
 		SELECT id, email, username, password_hash, phone, is_verified, email_verified, phone_verified,
-		       display_name, profile_picture, account_status, is_online, last_seen, created_at, updated_at
+		       display_name, profile_picture, bio, account_status, is_online, last_seen, created_at, updated_at
 		FROM users WHERE id = $1`
+
+	err := r.db.GetContext(ctx, user, query, id)
+	if err == sql.ErrNoRows {
+		return nil, ErrUserNotFound
+	}
+	return user, err
+}
+
+// GetUserWithStats retrieves a user by ID with their profile stats
+func (r *PostgresRepository) GetUserWithStats(ctx context.Context, id int64) (*UserWithStats, error) {
+	user := &UserWithStats{}
+	query := `
+		SELECT 
+			u.id, u.email, u.username, u.password_hash, u.phone, u.is_verified, 
+			u.email_verified, u.phone_verified, u.display_name, u.profile_picture, 
+			u.bio, u.account_status, u.is_online, u.last_seen, u.created_at, u.updated_at,
+			(SELECT COUNT(*) FROM posts WHERE user_id = u.id AND deleted_at IS NULL) as posts_count,
+			(SELECT COUNT(*) FROM follows WHERE following_id = u.id) as followers_count,
+			(SELECT COUNT(*) FROM follows WHERE follower_id = u.id) as following_count
+		FROM users u
+		WHERE u.id = $1`
 
 	err := r.db.GetContext(ctx, user, query, id)
 	if err == sql.ErrNoRows {

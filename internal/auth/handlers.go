@@ -151,7 +151,7 @@ func (h *Handler) GetMe(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	user, err := h.service.GetUserByID(r.Context(), userID)
+	user, err := h.service.GetUserWithStats(r.Context(), userID)
 	if err != nil {
 		common.NotFound(w, "User not found")
 		return

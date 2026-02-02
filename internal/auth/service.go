@@ -40,6 +40,7 @@ type Service interface {
 	
 	// User retrieval
 	GetUserByID(ctx context.Context, id int64) (*User, error)
+	GetUserWithStats(ctx context.Context, id int64) (*UserWithStats, error)
 	
 	// Session management
 	GetUserSessions(ctx context.Context, userID int64) ([]*Session, error)
@@ -297,6 +298,11 @@ func (s *service) ValidateRefreshToken(tokenString string) (*TokenClaims, error)
 // GetUserByID retrieves a user by ID
 func (s *service) GetUserByID(ctx context.Context, id int64) (*User, error) {
 	return s.repo.GetUserByID(ctx, id)
+}
+
+// GetUserWithStats retrieves a user with their profile stats
+func (s *service) GetUserWithStats(ctx context.Context, id int64) (*UserWithStats, error) {
+	return s.repo.GetUserWithStats(ctx, id)
 }
 
 // GetUserSessions retrieves all sessions for a user
