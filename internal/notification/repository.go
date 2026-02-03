@@ -46,7 +46,18 @@ func NewPostgresRepository(db *sqlx.DB) Repository {
 }
 
 func (r *PostgresRepository) Create(ctx context.Context, n *Notification) error {
-	dataJSON, _ := json.Marshal(n.Data)
+	var dataStr string
+	if n.Data != nil {
+		dataJSON, err := json.Marshal(n.Data)
+		if err != nil {
+			fmt.Printf("ERROR: Failed to marshal notification data: %v\n", err)
+			dataStr = "{}"
+		} else {
+			dataStr = string(dataJSON)
+		}
+	} else {
+		dataStr = "{}"
+	}
 
 	query := `
 		INSERT INTO notifications (user_id, type, title, message, data, action_url)
@@ -54,7 +65,7 @@ func (r *PostgresRepository) Create(ctx context.Context, n *Notification) error 
 		RETURNING id, is_read, created_at`
 
 	err := r.db.QueryRowxContext(ctx, query,
-		n.UserID, n.Type, n.Title, n.Message, dataJSON, n.ActionURL,
+		n.UserID, n.Type, n.Title, n.Message, dataStr, n.ActionURL,
 	).Scan(&n.ID, &n.IsRead, &n.CreatedAt)
 	
 	if err != nil {
