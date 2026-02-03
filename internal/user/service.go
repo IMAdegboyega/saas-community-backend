@@ -121,8 +121,14 @@ func (s *service) Follow(ctx context.Context, followerID, followingID int64, fol
 	// Send notification to the followed user
 	if s.notifySvc != nil {
 		go func() {
-			_ = s.notifySvc.NotifyFollow(context.Background(), followerID, followingID, followerUsername)
+			if err := s.notifySvc.NotifyFollow(context.Background(), followerID, followingID, followerUsername); err != nil {
+				fmt.Printf("ERROR: Failed to send follow notification: %v\n", err)
+			} else {
+				fmt.Printf("INFO: Follow notification sent from %d to %d\n", followerID, followingID)
+			}
 		}()
+	} else {
+		fmt.Println("WARNING: notifySvc is nil, cannot send follow notification")
 	}
 
 	return nil

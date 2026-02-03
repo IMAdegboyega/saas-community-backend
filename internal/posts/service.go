@@ -160,7 +160,11 @@ func (s *service) LikePost(ctx context.Context, userID, postID int64, username s
 	// Send notification to post owner (if not self)
 	if s.notifySvc != nil && post.UserID != userID {
 		go func() {
-			_ = s.notifySvc.NotifyLike(context.Background(), userID, post.UserID, postID, username)
+			if err := s.notifySvc.NotifyLike(context.Background(), userID, post.UserID, postID, username); err != nil {
+				fmt.Printf("ERROR: Failed to send like notification: %v\n", err)
+			} else {
+				fmt.Printf("INFO: Like notification sent from %d to %d for post %d\n", userID, post.UserID, postID)
+			}
 		}()
 	}
 	
@@ -214,7 +218,11 @@ func (s *service) CreateComment(ctx context.Context, userID, postID int64, usern
 			preview = preview[:47] + "..."
 		}
 		go func() {
-			_ = s.notifySvc.NotifyComment(context.Background(), userID, post.UserID, postID, comment.ID, username, preview)
+			if err := s.notifySvc.NotifyComment(context.Background(), userID, post.UserID, postID, comment.ID, username, preview); err != nil {
+				fmt.Printf("ERROR: Failed to send comment notification: %v\n", err)
+			} else {
+				fmt.Printf("INFO: Comment notification sent from %d to %d for post %d\n", userID, post.UserID, postID)
+			}
 		}()
 	}
 

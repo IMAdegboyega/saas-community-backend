@@ -56,8 +56,11 @@ func (s *service) Create(ctx context.Context, req *CreateNotificationRequest) (*
 	}
 
 	if err := s.repo.Create(ctx, n); err != nil {
+		fmt.Printf("ERROR: Failed to create notification in DB: %v\n", err)
 		return nil, fmt.Errorf("failed to create notification: %w", err)
 	}
+
+	fmt.Printf("INFO: Notification created - ID: %d, Type: %s, UserID: %d\n", n.ID, n.Type, n.UserID)
 
 	// TODO: Send push notification if enabled
 

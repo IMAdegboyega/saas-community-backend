@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"time"
 
 	"github.com/jmoiron/sqlx"
@@ -52,9 +53,14 @@ func (r *PostgresRepository) Create(ctx context.Context, n *Notification) error 
 		VALUES ($1, $2, $3, $4, $5, $6)
 		RETURNING id, is_read, created_at`
 
-	return r.db.QueryRowxContext(ctx, query,
+	err := r.db.QueryRowxContext(ctx, query,
 		n.UserID, n.Type, n.Title, n.Message, dataJSON, n.ActionURL,
 	).Scan(&n.ID, &n.IsRead, &n.CreatedAt)
+	
+	if err != nil {
+		fmt.Printf("ERROR: notification insert failed - UserID: %d, Type: %s, Error: %v\n", n.UserID, n.Type, err)
+	}
+	return err
 }
 
 func (r *PostgresRepository) GetByID(ctx context.Context, id int64) (*Notification, error) {
@@ -87,7 +93,11 @@ func (r *PostgresRepository) GetUserNotifications(ctx context.Context, userID in
 	}
 
 	var total int64
-	r.db.GetContext(ctx, &total, `SELECT COUNT(*) FROM notifications WHERE user_id = $1`, userID)
+	err := r.db.GetContext(ctx, &total, `SELECT COUNT(*) FROM notifications WHERE user_id = $1`, userID)
+	if err != nil {
+		fmt.Printf("ERROR: Failed to count notifications for user %d: %v\n", userID, err)
+	}
+	fmt.Printf("INFO: GetUserNotifications - UserID: %d, Total: %d\n", userID, total)
 
 	notifications := []*Notification{}
 	query := `
@@ -99,6 +109,7 @@ func (r *PostgresRepository) GetUserNotifications(ctx context.Context, userID in
 
 	rows, err := r.db.QueryxContext(ctx, query, userID, limit, offset)
 	if err != nil {
+		fmt.Printf("ERROR: Failed to query notifications: %v\n", err)
 		return nil, 0, err
 	}
 	defer rows.Close()
@@ -107,6 +118,7 @@ func (r *PostgresRepository) GetUserNotifications(ctx context.Context, userID in
 		n := &Notification{}
 		var dataJSON []byte
 		if err := rows.Scan(&n.ID, &n.UserID, &n.Type, &n.Title, &n.Message, &dataJSON, &n.ActionURL, &n.IsRead, &n.ReadAt, &n.CreatedAt); err != nil {
+			fmt.Printf("ERROR: Failed to scan notification row: %v\n", err)
 			continue
 		}
 		if len(dataJSON) > 0 {
@@ -126,6 +138,7 @@ func (r *PostgresRepository) GetUserNotifications(ctx context.Context, userID in
 		notifications = append(notifications, n)
 	}
 
+	fmt.Printf("INFO: Returning %d notifications for user %d\n", len(notifications), userID)
 	return notifications, total, nil
 }
 
