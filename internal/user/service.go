@@ -6,6 +6,11 @@ import (
 	"fmt"
 )
 
+// NotificationService interface for notification operations
+type NotificationService interface {
+	NotifyFollow(ctx context.Context, followerID, followedID int64, followerUsername string) error
+}
+
 // Service defines user business operations
 type Service interface {
 	// User operations
@@ -16,7 +21,7 @@ type Service interface {
 	UpdateProfile(ctx context.Context, userID int64, req *UpdateProfileRequest) (*User, error)
 	
 	// Follow operations
-	Follow(ctx context.Context, followerID, followingID int64) error
+	Follow(ctx context.Context, followerID, followingID int64, followerUsername string) error
 	Unfollow(ctx context.Context, followerID, followingID int64) error
 	GetFollowers(ctx context.Context, userID, currentUserID int64, limit, offset int) ([]*FollowUser, int64, error)
 	GetFollowing(ctx context.Context, userID, currentUserID int64, limit, offset int) ([]*FollowUser, int64, error)
@@ -33,12 +38,13 @@ type Service interface {
 }
 
 type service struct {
-	repo Repository
+	repo      Repository
+	notifySvc NotificationService
 }
 
 // NewService creates a new user service
-func NewService(repo Repository) Service {
-	return &service{repo: repo}
+func NewService(repo Repository, notifySvc NotificationService) Service {
+	return &service{repo: repo, notifySvc: notifySvc}
 }
 
 // GetUserByID retrieves a user by ID
@@ -97,7 +103,7 @@ func (s *service) SearchUsers(ctx context.Context, query string, currentUserID i
 }
 
 // Follow creates a follow relationship
-func (s *service) Follow(ctx context.Context, followerID, followingID int64) error {
+func (s *service) Follow(ctx context.Context, followerID, followingID int64, followerUsername string) error {
 	if followerID == followingID {
 		return ErrCannotFollowSelf
 	}
@@ -108,7 +114,18 @@ func (s *service) Follow(ctx context.Context, followerID, followingID int64) err
 		return err
 	}
 
-	return s.repo.Follow(ctx, followerID, followingID)
+	if err := s.repo.Follow(ctx, followerID, followingID); err != nil {
+		return err
+	}
+
+	// Send notification to the followed user
+	if s.notifySvc != nil {
+		go func() {
+			_ = s.notifySvc.NotifyFollow(context.Background(), followerID, followingID, followerUsername)
+		}()
+	}
+
+	return nil
 }
 
 // Unfollow removes a follow relationship

@@ -67,17 +67,24 @@ func main() {
 	authMiddleware := auth.NewMiddleware(authService)
 	log.Println("✅ Auth initialized")
 
-	// 5. Initialize User module (with Follow system)
+	// 9. Initialize Notification module
+	log.Println("🔔 Initializing Notifications...")
+	notificationRepo := notification.NewPostgresRepository(db)
+	notificationService := notification.NewService(notificationRepo)
+	notificationHandler := notification.NewHandler(notificationService)
+	log.Println("✅ Notifications initialized")
+
+	// 5. Initialize User module (with Follow system) - after notifications
 	log.Println("👤 Initializing User & Follow system...")
 	userRepo := user.NewPostgresRepository(db)
-	userService := user.NewService(userRepo)
+	userService := user.NewService(userRepo, notificationService)
 	userHandler := user.NewHandler(userService)
 	log.Println("✅ User & Follow system initialized")
 
-	// 6. Initialize Posts module
+	// 6. Initialize Posts module - after notifications
 	log.Println("📝 Initializing Posts...")
 	postsRepo := posts.NewPostgresRepository(db)
-	postsService := posts.NewService(postsRepo)
+	postsService := posts.NewService(postsRepo, notificationService)
 	postsHandler := posts.NewHandler(postsService)
 	log.Println("✅ Posts initialized")
 
@@ -96,13 +103,6 @@ func main() {
 	messagingService := messaging.NewService(messagingRepo)
 	messagingHandler := messaging.NewHandler(messagingService, messagingHub)
 	log.Println("✅ Messaging initialized")
-
-	// 9. Initialize Notification module
-	log.Println("🔔 Initializing Notifications...")
-	notificationRepo := notification.NewPostgresRepository(db)
-	notificationService := notification.NewService(notificationRepo)
-	notificationHandler := notification.NewHandler(notificationService)
-	log.Println("✅ Notifications initialized")
 
 	// 10. Setup routes
 	log.Println("🛣️  Setting up routes...")

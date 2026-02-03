@@ -215,13 +215,15 @@ func (h *Handler) LikePost(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	username, _ := common.GetUsername(r.Context())
+
 	postID, err := strconv.ParseInt(mux.Vars(r)["id"], 10, 64)
 	if err != nil {
 		common.BadRequest(w, "Invalid post ID")
 		return
 	}
 
-	if err := h.service.LikePost(r.Context(), userID, postID); err != nil {
+	if err := h.service.LikePost(r.Context(), userID, postID, username); err != nil {
 		if errors.Is(err, ErrPostNotFound) {
 			common.NotFound(w, "Post not found")
 			return
@@ -322,6 +324,8 @@ func (h *Handler) CreateComment(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	username, _ := common.GetUsername(r.Context())
+
 	postID, err := strconv.ParseInt(mux.Vars(r)["id"], 10, 64)
 	if err != nil {
 		common.BadRequest(w, "Invalid post ID")
@@ -334,7 +338,7 @@ func (h *Handler) CreateComment(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	comment, err := h.service.CreateComment(r.Context(), userID, postID, &req)
+	comment, err := h.service.CreateComment(r.Context(), userID, postID, username, &req)
 	if err != nil {
 		if errors.Is(err, ErrPostNotFound) {
 			common.NotFound(w, "Post not found")

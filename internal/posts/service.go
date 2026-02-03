@@ -6,6 +6,12 @@ import (
 	"fmt"
 )
 
+// NotificationService interface for notification operations
+type NotificationService interface {
+	NotifyLike(ctx context.Context, likerID, postOwnerID, postID int64, likerUsername string) error
+	NotifyComment(ctx context.Context, commenterID, postOwnerID, postID, commentID int64, commenterUsername, commentPreview string) error
+}
+
 // Service defines post business operations
 type Service interface {
 	CreatePost(ctx context.Context, userID int64, req *CreatePostRequest) (*Post, error)
@@ -15,22 +21,23 @@ type Service interface {
 	GetUserPosts(ctx context.Context, userID, currentUserID int64, limit, offset int) ([]*Post, int64, error)
 	GetFeed(ctx context.Context, userID int64, feedType string, limit, offset int) ([]*Post, error)
 	AddPostMedia(ctx context.Context, userID, postID int64, media *PostMedia) error
-	LikePost(ctx context.Context, userID, postID int64) error
+	LikePost(ctx context.Context, userID, postID int64, username string) error
 	UnlikePost(ctx context.Context, userID, postID int64) error
 	SavePost(ctx context.Context, userID, postID int64) error
 	UnsavePost(ctx context.Context, userID, postID int64) error
 	GetSavedPosts(ctx context.Context, userID int64, limit, offset int) ([]*Post, int64, error)
-	CreateComment(ctx context.Context, userID, postID int64, req *CreateCommentRequest) (*Comment, error)
+	CreateComment(ctx context.Context, userID, postID int64, username string, req *CreateCommentRequest) (*Comment, error)
 	GetPostComments(ctx context.Context, postID, currentUserID int64, limit, offset int) ([]*Comment, int64, error)
 	DeleteComment(ctx context.Context, userID, commentID int64) error
 }
 
 type service struct {
-	repo Repository
+	repo        Repository
+	notifySvc   NotificationService
 }
 
-func NewService(repo Repository) Service {
-	return &service{repo: repo}
+func NewService(repo Repository, notifySvc NotificationService) Service {
+	return &service{repo: repo, notifySvc: notifySvc}
 }
 
 func (s *service) CreatePost(ctx context.Context, userID int64, req *CreatePostRequest) (*Post, error) {
@@ -140,12 +147,24 @@ func (s *service) AddPostMedia(ctx context.Context, userID, postID int64, media 
 	return s.repo.AddPostMedia(ctx, media)
 }
 
-func (s *service) LikePost(ctx context.Context, userID, postID int64) error {
-	_, err := s.repo.GetPostByID(ctx, postID, userID)
+func (s *service) LikePost(ctx context.Context, userID, postID int64, username string) error {
+	post, err := s.repo.GetPostByID(ctx, postID, userID)
 	if err != nil {
 		return err
 	}
-	return s.repo.LikePost(ctx, postID, userID)
+	
+	if err := s.repo.LikePost(ctx, postID, userID); err != nil {
+		return err
+	}
+	
+	// Send notification to post owner (if not self)
+	if s.notifySvc != nil && post.UserID != userID {
+		go func() {
+			_ = s.notifySvc.NotifyLike(context.Background(), userID, post.UserID, postID, username)
+		}()
+	}
+	
+	return nil
 }
 
 func (s *service) UnlikePost(ctx context.Context, userID, postID int64) error {
@@ -171,8 +190,8 @@ func (s *service) GetSavedPosts(ctx context.Context, userID int64, limit, offset
 	return s.repo.GetSavedPosts(ctx, userID, limit, offset)
 }
 
-func (s *service) CreateComment(ctx context.Context, userID, postID int64, req *CreateCommentRequest) (*Comment, error) {
-	_, err := s.repo.GetPostByID(ctx, postID, userID)
+func (s *service) CreateComment(ctx context.Context, userID, postID int64, username string, req *CreateCommentRequest) (*Comment, error) {
+	post, err := s.repo.GetPostByID(ctx, postID, userID)
 	if err != nil {
 		return nil, err
 	}
@@ -186,6 +205,17 @@ func (s *service) CreateComment(ctx context.Context, userID, postID int64, req *
 
 	if err := s.repo.CreateComment(ctx, comment); err != nil {
 		return nil, fmt.Errorf("failed to create comment: %w", err)
+	}
+
+	// Send notification to post owner (if not self)
+	if s.notifySvc != nil && post.UserID != userID {
+		preview := req.Content
+		if len(preview) > 50 {
+			preview = preview[:47] + "..."
+		}
+		go func() {
+			_ = s.notifySvc.NotifyComment(context.Background(), userID, post.UserID, postID, comment.ID, username, preview)
+		}()
 	}
 
 	return comment, nil

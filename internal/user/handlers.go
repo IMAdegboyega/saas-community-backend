@@ -169,6 +169,8 @@ func (h *Handler) Follow(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	username, _ := common.GetUsername(r.Context())
+
 	vars := mux.Vars(r)
 	targetUserID, err := strconv.ParseInt(vars["id"], 10, 64)
 	if err != nil {
@@ -176,7 +178,7 @@ func (h *Handler) Follow(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err := h.service.Follow(r.Context(), currentUserID, targetUserID); err != nil {
+	if err := h.service.Follow(r.Context(), currentUserID, targetUserID, username); err != nil {
 		switch {
 		case errors.Is(err, ErrCannotFollowSelf):
 			common.BadRequest(w, "You cannot follow yourself")
