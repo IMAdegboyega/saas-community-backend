@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"log"
 	"time"
 
 	"github.com/jmoiron/sqlx"
@@ -199,7 +200,7 @@ func (r *PostgresRepository) GetParticipants(ctx context.Context, convID int64) 
 	query := `
 		SELECT cp.id, cp.conversation_id, cp.user_id, cp.role, cp.joined_at,
 			cp.left_at, cp.last_read_at, cp.last_read_message_id, cp.is_muted, cp.is_archived, cp.unread_count,
-			u.id, u.username, u.display_name, u.profile_picture, u.is_verified, u.is_online
+			u.id, u.username, u.display_name, u.profile_picture, u.is_verified, COALESCE(u.is_online, false) as is_online
 		FROM conversation_participants cp
 		JOIN users u ON cp.user_id = u.id
 		WHERE cp.conversation_id = $1 AND cp.left_at IS NULL`
@@ -216,6 +217,8 @@ func (r *PostgresRepository) GetParticipants(ctx context.Context, convID int64) 
 			&p.LeftAt, &p.LastReadAt, &p.LastReadMessageID, &p.IsMuted, &p.IsArchived, &p.UnreadCount,
 			&p.User.ID, &p.User.Username, &p.User.DisplayName, &p.User.ProfilePicture,
 			&p.User.IsVerified, &p.User.IsOnline); err != nil {
+			// Log the error for debugging
+			log.Printf("ERROR: Failed to scan participant for conversation %d: %v", convID, err)
 			continue
 		}
 		participants = append(participants, p)
